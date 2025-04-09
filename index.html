@@ -1,178 +1,273 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Airbuds Controller</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="icons/icon-192.png" />
-  <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
-    .container {
-      max-width: 600px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.05);
-      padding: 20px;
-      border-radius: 20px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 10px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      background: #00bcd4;
-      color: white;
-    }
-    canvas {
-      width: 100%;
-      height: 150px;
-    }
-    .dark-mode {
-      background: #121212;
-      color: #ccc;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aibuds Battery and Volume Control</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 50px 10px;
+        }
+
+        #batteryStatus {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .batteryLevel {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+
+        .batteryLevel.left, .batteryLevel.right {
+            font-size: 18px;
+        }
+
+        .batteryLevel.left {
+            color: #4CAF50;
+        }
+
+        .batteryLevel.right {
+            color: #2196F3;
+        }
+
+        .playbackTime {
+            font-size: 16px;
+            margin-top: 5px;
+            color: #777;
+        }
+
+        #connectBtn, #updateBtn, #volumeControlBtn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+
+        #connectBtn:hover, #updateBtn:hover, #volumeControlBtn:hover {
+            background-color: #45a049;
+        }
+
+        #connectBtn {
+            margin-top: 30px;
+        }
+
+        /* Media Queries for Responsiveness */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 20px;
+            }
+
+            .batteryLevel {
+                font-size: 18px;
+            }
+
+            .playbackTime {
+                font-size: 14px;
+            }
+
+            #connectBtn, #updateBtn {
+                padding: 8px 16px;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 18px;
+            }
+
+            .batteryLevel {
+                font-size: 16px;
+            }
+
+            .playbackTime {
+                font-size: 12px;
+            }
+
+            #connectBtn, #updateBtn {
+                width: 100%;
+                padding: 12px;
+                font-size: 18px;
+            }
+        }
+
+        /* Volume Control */
+        .volumeControl {
+            margin-top: 20px;
+        }
+
+        .volumeControl input[type="range"] {
+            width: 100%;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎧 Airbuds Controller</h1>
-    <button onclick="connectBluetooth()">Connect Airbuds</button>
-    <button onclick="toggleTheme()">Switch Theme</button>
-    <button onclick="changeSoundMode()">Change Sound Mode</button>
-    <button onclick="toggleLeftRight()">Left/Right Control</button>
-    <canvas id="batteryChart"></canvas>
-    <p id="status">Status: Not connected</p>
-    <p id="mode">Sound Mode: Normal</p>
-    <p id="channel">Channel: Both</p>
-  </div>
+    <div id="batteryStatus">
+        <h1>Aibuds Battery and Volume Control</h1>
+        <div id="leftBattery" class="batteryLevel left">Left Earbud: Not Connected</div>
+        <div id="rightBattery" class="batteryLevel right">Right Earbud: Not Connected</div>
+        <div id="totalPlayback" class="playbackTime">Total Playback Time: N/A</div>
+        <button id="connectBtn">Connect to Aibuds</button>
+        <button id="updateBtn" style="display: none;">Update Battery</button>
 
-  <script>
-    let soundMode = 'Normal';
-    let leftRight = 'Both';
-    let dark = false;
+        <!-- Volume Control -->
+        <div class="volumeControl">
+            <label for="volumeSlider">Volume Control</label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+            <p id="volumeLabel">Volume: 100%</p>
+        </div>
+    </div>
 
-    function connectBluetooth() {
-      navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['battery_service'] })
-        .then(device => {
-          document.getElementById('status').innerText = `Connected to: ${device.name}`;
-          showNotification(`Connected to ${device.name}`);
-        })
-        .catch(error => console.error(error));
-    }
+    <script>
+        let leftBatteryLevel = 0;
+        let rightBatteryLevel = 0;
+        let leftBatteryCharacteristic = null;
+        let rightBatteryCharacteristic = null;
+        let device = null;
+        let audioPlayer = new Audio('your-audio-file.mp3');  // Replace with your audio file
 
-    function changeSoundMode() {
-      soundMode = (soundMode === 'Normal') ? 'Bass Boost' : 'Normal';
-      document.getElementById('mode').innerText = `Sound Mode: ${soundMode}`;
-      speak(`Sound mode changed to ${soundMode}`);
-    }
+        // Assume 100% battery corresponds to 10 hours of playback
+        const MAX_PLAYBACK_TIME = 10;
 
-    function toggleLeftRight() {
-      leftRight = (leftRight === 'Both') ? 'Left Only' : (leftRight === 'Left Only') ? 'Right Only' : 'Both';
-      document.getElementById('channel').innerText = `Channel: ${leftRight}`;
-      speak(`Channel set to ${leftRight}`);
-    }
-
-    function toggleTheme() {
-      dark = !dark;
-      document.body.classList.toggle('dark-mode');
-      speak('Theme changed');
-    }
-
-    function showNotification(message) {
-      if (Notification.permission === 'granted') {
-        new Notification(message);
-      } else {
-        Notification.requestPermission();
-      }
-    }
-
-    function speak(text) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      speechSynthesis.speak(utterance);
-    }
-
-    // Battery Chart Simulation
-    const ctx = document.getElementById('batteryChart').getContext('2d');
-    let chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: ['0', '10', '20', '30', '40', '50', '60'],
-        datasets: [{
-          label: 'Battery Drain %',
-          data: [100, 95, 92, 88, 85, 80, 75],
-          borderColor: '#00bcd4',
-          borderWidth: 2,
-          fill: false
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: 'white' } } },
-        scales: {
-          x: { ticks: { color: 'white' } },
-          y: { ticks: { color: 'white' } }
+        // Check if Web Bluetooth is supported
+        if ('bluetooth' in navigator) {
+            console.log('Web Bluetooth supported');
+        } else {
+            alert('Your browser does not support Web Bluetooth API');
         }
-      }
-    });
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log('Service Worker Registered'))
-        .catch(err => console.error('SW Error:', err));
-    }
-  </script>
+        // Function to connect to the Aibuds (both left and right)
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            console.log("Attempting to connect to Aibuds...");
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            navigator.bluetooth.requestDevice({
+                filters: [{ services: ['battery_service'] }]
+            })
+            .then(selectedDevice => {
+                console.log('Device selected: ', selectedDevice);
+                device = selectedDevice;
+                return device.gatt.connect();
+            })
+            .then(server => {
+                console.log('Connected to GATT server');
+                return server.getPrimaryService('battery_service');
+            })
+            .then(service => {
+                console.log('Battery service found');
+                return Promise.all([ 
+                    service.getCharacteristic('battery_level'), 
+                    service.getCharacteristic('battery_level') // Placeholder for two different earbuds
+                ]);
+            })
+            .then(characteristics => {
+                console.log('Battery level characteristics found');
+                leftBatteryCharacteristic = characteristics[0];
+                rightBatteryCharacteristic = characteristics[1];
+                document.getElementById('connectBtn').style.display = 'none';
+                document.getElementById('updateBtn').style.display = 'inline-block';
+                return Promise.all([readBatteryLevel('left'), readBatteryLevel('right')]);
+            })
+            .catch(error => {
+                console.error('Connection failed or error occurred: ', error);
+                alert('Error occurred: ' + error);
+            });
+        });
+
+        // Function to read battery level for left or right
+        function readBatteryLevel(side) {
+            let characteristic = side === 'left' ? leftBatteryCharacteristic : rightBatteryCharacteristic;
+            if (characteristic) {
+                characteristic.readValue()
+                    .then(value => {
+                        let batteryLevel = value.getUint8(0);
+                        if (side === 'left') {
+                            leftBatteryLevel = batteryLevel;
+                            updateBatteryStatus();
+                        } else {
+                            rightBatteryLevel = batteryLevel;
+                            updateBatteryStatus();
+                        }
+                    })
+                    .catch(error => {
+                        console.error(`Failed to read ${side} battery level:`, error);
+                    });
+            }
+        }
+
+        // Update the battery status and calculate total playback time
+        function updateBatteryStatus() {
+            const leftBattery = document.getElementById('leftBattery');
+            const rightBattery = document.getElementById('rightBattery');
+            const totalPlayback = document.getElementById('totalPlayback');
+
+            // Update battery level for left and right
+            leftBattery.textContent = `Left Earbud: ${leftBatteryLevel}%`;
+            rightBattery.textContent = `Right Earbud: ${rightBatteryLevel}%`;
+
+            // Calculate average battery level for total playback time
+            let avgBatteryLevel = (leftBatteryLevel + rightBatteryLevel) / 2;
+            let estimatedPlaybackTime = (avgBatteryLevel / 100) * MAX_PLAYBACK_TIME;
+            
+            // Update total playback time
+            totalPlayback.textContent = `Total Playback Time: ${estimatedPlaybackTime.toFixed(1)} hours`;
+
+            // Change text color based on battery level
+            if (leftBatteryLevel < 20 || rightBatteryLevel < 20) {
+                leftBattery.style.color = 'red';
+                rightBattery.style.color = 'red';
+            } else {
+                leftBattery.style.color = '#4CAF50';
+                rightBattery.style.color = '#2196F3';
+            }
+        }
+
+        // Volume control functionality
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeLabel = document.getElementById('volumeLabel');
+
+        volumeSlider.addEventListener('input', function() {
+            let volume = volumeSlider.value;
+            audioPlayer.volume = volume;  // Control audio volume
+            volumeLabel.textContent = `Volume: ${(volume * 100).toFixed(0)}%`;  // Update volume label
+        });
+
+        // Update battery and total playback time on button click
+        document.getElementById('updateBtn').addEventListener('click', function() {
+            readBatteryLevel('left');
+            readBatteryLevel('right');
+        });
+
+        // Play audio when the page loads (optional, based on user preference)
+        audioPlayer.play().catch(error => {
+            console.error('Audio playback failed:', error);
+        });
+    </script>
 </body>
 </html>
-
-<!-- manifest.json -->
-<script type="application/json" id="manifest-data">
-{
-  "name": "Airbuds Controller",
-  "short_name": "Airbuds",
-  "start_url": "/index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#4CAF50",
-  "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-  ]
-}
-</script>
-
-<!-- service-worker.js -->
-<script type="text/plain" id="sw-script">
-const cacheName = 'airbuds-cache-v1';
-const filesToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
-];
-
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(cacheName).then(cache => cache.addAll(filesToCache))
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(response => response || fetch(event.request))
-  );
-});
-</script>
