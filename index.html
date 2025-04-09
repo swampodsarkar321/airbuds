@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airbuds Controller</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 20px;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: #00bcd4;
+      color: white;
+    }
+    canvas {
+      width: 100%;
+      height: 150px;
+    }
+    .dark-mode {
+      background: #121212;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎧 Airbuds Controller</h1>
+    <button onclick="connectBluetooth()">Connect Airbuds</button>
+    <button onclick="toggleTheme()">Switch Theme</button>
+    <button onclick="changeSoundMode()">Change Sound Mode</button>
+    <button onclick="toggleLeftRight()">Left/Right Control</button>
+    <canvas id="batteryChart"></canvas>
+    <p id="status">Status: Not connected</p>
+    <p id="mode">Sound Mode: Normal</p>
+    <p id="channel">Channel: Both</p>
+  </div>
+
+  <script>
+    let soundMode = 'Normal';
+    let leftRight = 'Both';
+    let dark = false;
+
+    function connectBluetooth() {
+      navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['battery_service'] })
+        .then(device => {
+          document.getElementById('status').innerText = `Connected to: ${device.name}`;
+          showNotification(`Connected to ${device.name}`);
+        })
+        .catch(error => console.error(error));
+    }
+
+    function changeSoundMode() {
+      soundMode = (soundMode === 'Normal') ? 'Bass Boost' : 'Normal';
+      document.getElementById('mode').innerText = `Sound Mode: ${soundMode}`;
+      speak(`Sound mode changed to ${soundMode}`);
+    }
+
+    function toggleLeftRight() {
+      leftRight = (leftRight === 'Both') ? 'Left Only' : (leftRight === 'Left Only') ? 'Right Only' : 'Both';
+      document.getElementById('channel').innerText = `Channel: ${leftRight}`;
+      speak(`Channel set to ${leftRight}`);
+    }
+
+    function toggleTheme() {
+      dark = !dark;
+      document.body.classList.toggle('dark-mode');
+      speak('Theme changed');
+    }
+
+    function showNotification(message) {
+      if (Notification.permission === 'granted') {
+        new Notification(message);
+      } else {
+        Notification.requestPermission();
+      }
+    }
+
+    function speak(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      speechSynthesis.speak(utterance);
+    }
+
+    // Battery Chart Simulation
+    const ctx = document.getElementById('batteryChart').getContext('2d');
+    let chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['0', '10', '20', '30', '40', '50', '60'],
+        datasets: [{
+          label: 'Battery Drain %',
+          data: [100, 95, 92, 88, 85, 80, 75],
+          borderColor: '#00bcd4',
+          borderWidth: 2,
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: 'white' } } },
+        scales: {
+          x: { ticks: { color: 'white' } },
+          y: { ticks: { color: 'white' } }
+        }
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('Service Worker Registered'))
+        .catch(err => console.error('SW Error:', err));
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</body>
+</html>
+
+<!-- manifest.json -->
+<script type="application/json" id="manifest-data">
+{
+  "name": "Airbuds Controller",
+  "short_name": "Airbuds",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4CAF50",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+</script>
+
+<!-- service-worker.js -->
+<script type="text/plain" id="sw-script">
+const cacheName = 'airbuds-cache-v1';
+const filesToCache = [
+  '/',
+  '/index.html',
+  '/style.css',
+  '/app.js',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(cacheName).then(cache => cache.addAll(filesToCache))
+  );
+});
+
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => response || fetch(event.request))
+  );
+});
+</script>
